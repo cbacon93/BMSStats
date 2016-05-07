@@ -1,0 +1,43 @@
+body {
+	font-family: Verdana;
+	font-size: 12px;
+}
+
+p {
+	margin: 0px;
+}
+
+p.pilot_online {
+	color: green;
+	font-weight: bold;
+}
+
+.table_stats {
+	border-spacing: 0px;
+	border-collapse: collapse;
+}
+
+.table_stats td, th {
+	border: 1px solid black;
+	padding: 5px;
+	padding-left: 20px;
+	padding-right: 20px;
+}
+
+.table_stats tr {
+	cursor: pointer;
+}
+
+.table_header {
+	background-color: #CDCDCD;
+}
+
+
+.table_row_0 {
+	background-color: #efefef;
+}
+
+#map {
+	height: 600px;
+	width: 1000px;
+}
