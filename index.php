@@ -27,10 +27,6 @@
 	
 	
 	$simStats = new SimStats(new mysqli($MYSQL_HOST, $MYSQL_USER, $MYSQL_PASS, $MYSQL_DB));
-	
-	//for ajax json data import
-	if (isset($_GET['mapjson'])) die($simStats->getLiveRadarMapInfoJSON());
-	if (isset($_GET['mapjsonid'])) die($simStats->getFlightPathMapInfoJSON($_GET['mapjsonid']));
 ?>
 
 <!doctype html>
@@ -38,16 +34,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DCSServerStats</title>
+    <title>BMS Statistics</title>
     <link rel="stylesheet" href="css/style.css">
     <script type="text/javascript" src="css/tools.js"></script>
   </head>
   <body onload="timer()">
 	  <a href="?pilots">Pilots</a> - 
 	  <a href="?flights">Flights</a> - 
-	  <a href="?aircrafts">Aircrafts</a> - 
-	  <a href="?weapons">Weapons</a> - 
-	  <a href="?map">Live Radar Map</a>
+	  <a href="?aircrafts">Aircrafts</a>
 	  <?php $simStats->echoSiteContent(); ?>
 	  <br><br>
 	  <?php $simStats->echoUpdateInfo(); ?>
