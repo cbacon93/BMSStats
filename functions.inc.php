@@ -74,7 +74,7 @@ class SimStats {
 	public function getPilotsTable() {
 		$pilots = array();
 		
-		$result = $this->mysqli->query("SELECT * FROM pilots WHERE name<>'AI' AND disp_name<>'AI' ORDER BY flighttime DESC");
+		$result = $this->mysqli->query("SELECT * FROM bms_pilots WHERE name<>'AI' AND disp_name<>'AI' ORDER BY flighttime DESC");
 		while($row = $result->fetch_object()) {
 			$pilots[] = $row;
 		}
@@ -88,10 +88,10 @@ class SimStats {
 		$flights = array();
 		
 		if ($pilotid > 0) {
-			$prep = $this->mysqli->prepare("SELECT 0, '', aircrafts.name, flights.id, flights.takeofftime, flights.landingtime, flights.recordtime FROM flights, aircrafts WHERE flights.pilotid=? AND aircrafts.id=flights.aircraftid ORDER BY flights.takeofftime DESC LIMIT 10");
+			$prep = $this->mysqli->prepare("SELECT 0, '', aircrafts.name, flights.id, flights.takeofftime, flights.landingtime, flights.recordtime FROM bms_flights AS flights, bms_aircrafts AS aircrafts WHERE flights.pilotid=? AND aircrafts.id=flights.aircraftid ORDER BY flights.takeofftime DESC LIMIT 10");
 			$prep->bind_param('i', $pilotid);
 		} else {
-			$prep = $this->mysqli->prepare("SELECT pilots.id AS pid, pilots.disp_name AS pname, aircrafts.name, flights.id, flights.takeofftime, flights.landingtime, flights.recordtime FROM flights, aircrafts, pilots WHERE pilots.id=flights.pilotid AND aircrafts.id=flights.aircraftid AND pilots.name<>'AI' AND pilots.disp_name<>'AI' ORDER BY flights.takeofftime DESC LIMIT 30");
+			$prep = $this->mysqli->prepare("SELECT pilots.id AS pid, pilots.disp_name AS pname, aircrafts.name, flights.id, flights.takeofftime, flights.landingtime, flights.recordtime FROM bms_flights AS flights, bms_aircrafts AS aircrafts, bms_pilots AS pilots WHERE pilots.id=flights.pilotid AND aircrafts.id=flights.aircraftid AND pilots.name<>'AI' AND pilots.disp_name<>'AI' ORDER BY flights.takeofftime DESC LIMIT 30");
 		}
 		$prep->execute();
 		
@@ -120,10 +120,10 @@ class SimStats {
 		$aircrafts = array();
 		
 		if ($pilotid > 0) {
-			$prep = $this->mysqli->prepare("SELECT pilot_aircrafts.flights, aircrafts.name, pilot_aircrafts.flighttime FROM pilot_aircrafts, aircrafts, pilots WHERE pilot_aircrafts.pilotid=? AND pilots.id = pilot_aircrafts.pilotid AND pilot_aircrafts.aircraftid=aircrafts.id ORDER BY pilot_aircrafts.flighttime DESC");
+			$prep = $this->mysqli->prepare("SELECT pilot_aircrafts.flights, aircrafts.name, pilot_aircrafts.flighttime FROM bms_pilot_aircrafts AS pilot_aircrafts, bms_aircrafts AS aircrafts, bms_pilots AS pilots WHERE pilot_aircrafts.pilotid=? AND pilots.id = pilot_aircrafts.pilotid AND pilot_aircrafts.aircraftid=aircrafts.id ORDER BY pilot_aircrafts.flighttime DESC");
 			$prep->bind_param('i', $pilotid);
 		} else {
-			$prep = $this->mysqli->prepare("SELECT aircrafts.flights, aircrafts.name, aircrafts.flighttime FROM aircrafts ORDER BY aircrafts.flighttime DESC");
+			$prep = $this->mysqli->prepare("SELECT aircrafts.flights, aircrafts.name, aircrafts.flighttime FROM bms_aircrafts AS aircrafts ORDER BY aircrafts.flighttime DESC");
 		}
 		$prep->execute();
 		
@@ -185,7 +185,7 @@ class SimStats {
 	
 	public function getPilotsStatistic($pilotid) {
 		//get pilot information
-		$prep = $this->mysqli->prepare("SELECT id, name, disp_name, flighttime, flights, lastactive FROM pilots WHERE id=?");
+		$prep = $this->mysqli->prepare("SELECT id, name, disp_name, flighttime, flights, lastactive FROM bms_pilots WHERE id=?");
 		$prep->bind_param('i', $pilotid);
 		$prep->execute();
 		

@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Erstellungszeit: 07. Mai 2016 um 16:26
+-- Erstellungszeit: 09. Mai 2016 um 13:46
 -- Server-Version: 10.1.10-MariaDB
 -- PHP-Version: 5.6.19
 
@@ -23,14 +23,29 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Tabellenstruktur für Tabelle `aircrafts`
+-- Tabellenstruktur für Tabelle `bms_aircrafts`
 --
 
-CREATE TABLE `aircrafts` (
+CREATE TABLE `bms_aircrafts` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
   `flights` int(11) NOT NULL DEFAULT '0',
   `flighttime` int(11) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Tabellenstruktur für Tabelle `bms_flights`
+--
+
+CREATE TABLE `bms_flights` (
+  `id` int(11) NOT NULL,
+  `recordtime` int(11) NOT NULL,
+  `pilotid` int(11) NOT NULL,
+  `takeofftime` int(11) NOT NULL,
+  `landingtime` int(11) NOT NULL,
+  `aircraftid` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
@@ -49,25 +64,10 @@ CREATE TABLE `bms_parser_log` (
 -- --------------------------------------------------------
 
 --
--- Tabellenstruktur für Tabelle `flights`
+-- Tabellenstruktur für Tabelle `bms_pilots`
 --
 
-CREATE TABLE `flights` (
-  `id` int(11) NOT NULL,
-  `recordtime` int(11) NOT NULL,
-  `pilotid` int(11) NOT NULL,
-  `takeofftime` int(11) NOT NULL,
-  `landingtime` int(11) NOT NULL,
-  `aircraftid` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
--- --------------------------------------------------------
-
---
--- Tabellenstruktur für Tabelle `pilots`
---
-
-CREATE TABLE `pilots` (
+CREATE TABLE `bms_pilots` (
   `id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
   `disp_name` varchar(255) NOT NULL,
@@ -79,10 +79,10 @@ CREATE TABLE `pilots` (
 -- --------------------------------------------------------
 
 --
--- Tabellenstruktur für Tabelle `pilot_aircrafts`
+-- Tabellenstruktur für Tabelle `bms_pilot_aircrafts`
 --
 
-CREATE TABLE `pilot_aircrafts` (
+CREATE TABLE `bms_pilot_aircrafts` (
   `id` int(11) NOT NULL,
   `pilotid` int(11) NOT NULL,
   `aircraftid` int(11) NOT NULL,
@@ -95,9 +95,15 @@ CREATE TABLE `pilot_aircrafts` (
 --
 
 --
--- Indizes für die Tabelle `aircrafts`
+-- Indizes für die Tabelle `bms_aircrafts`
 --
-ALTER TABLE `aircrafts`
+ALTER TABLE `bms_aircrafts`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indizes für die Tabelle `bms_flights`
+--
+ALTER TABLE `bms_flights`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -107,21 +113,15 @@ ALTER TABLE `bms_parser_log`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indizes für die Tabelle `flights`
+-- Indizes für die Tabelle `bms_pilots`
 --
-ALTER TABLE `flights`
+ALTER TABLE `bms_pilots`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indizes für die Tabelle `pilots`
+-- Indizes für die Tabelle `bms_pilot_aircrafts`
 --
-ALTER TABLE `pilots`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indizes für die Tabelle `pilot_aircrafts`
---
-ALTER TABLE `pilot_aircrafts`
+ALTER TABLE `bms_pilot_aircrafts`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -129,30 +129,30 @@ ALTER TABLE `pilot_aircrafts`
 --
 
 --
--- AUTO_INCREMENT für Tabelle `aircrafts`
+-- AUTO_INCREMENT für Tabelle `bms_aircrafts`
 --
-ALTER TABLE `aircrafts`
+ALTER TABLE `bms_aircrafts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+--
+-- AUTO_INCREMENT für Tabelle `bms_flights`
+--
+ALTER TABLE `bms_flights`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 --
 -- AUTO_INCREMENT für Tabelle `bms_parser_log`
 --
 ALTER TABLE `bms_parser_log`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 --
--- AUTO_INCREMENT für Tabelle `flights`
+-- AUTO_INCREMENT für Tabelle `bms_pilots`
 --
-ALTER TABLE `flights`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+ALTER TABLE `bms_pilots`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 --
--- AUTO_INCREMENT für Tabelle `pilots`
+-- AUTO_INCREMENT für Tabelle `bms_pilot_aircrafts`
 --
-ALTER TABLE `pilots`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
---
--- AUTO_INCREMENT für Tabelle `pilot_aircrafts`
---
-ALTER TABLE `pilot_aircrafts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+ALTER TABLE `bms_pilot_aircrafts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

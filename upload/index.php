@@ -21,7 +21,6 @@
 
 	require "../config.inc.php";
 	include "import-xml.php";
-	include "../functions.inc.php";
 	
 	$driver = new mysqli_driver();
 	$driver->report_mode = MYSQLI_REPORT_ERROR;
@@ -44,7 +43,7 @@
 		if (time()-$_SESSION['xml_upload_time'] <= 3*$_SESSION['xml_upload_mult']) {
 			$anti_bruteforce = true;
 			$_SESSION['xml_upload_mult'] += 1;
-			$error = "<p style='color: red'>Slow down! </p><p class='js_timer_down'>" . timeToString(3*$_SESSION['xml_upload_mult']+1) . "</p>";
+			$error = "<p style='color: red'>Slow down! </p><p class='js_timer_down'>" . XML_Import::timeToString(3*$_SESSION['xml_upload_mult']+1) . "</p>";
 		} else {
 			$_SESSION['xml_upload_mult'] = 1;
 		}

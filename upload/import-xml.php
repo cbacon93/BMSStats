@@ -19,7 +19,7 @@
 
 class XML_Import {
 	private $flight_list = array();
-	
+	private $bms_parser_log;
 	
 	public static function timeToString($time) {
 		$flight_hours = floor($time / 60 / 60);
@@ -36,7 +36,7 @@ class XML_Import {
 	
 	
 	public function printDebug() {
-		echo "Following Flights have been added: <br>";
+		echo "Following Flights have been found: <br>";
 		echo "<table class='table_stats'>";
 		echo "<tr class='table_header'><th>Record date</th><th>Pilot</th><th>Aircraft</th><th>Takeoff</th><th>Landing</th><th>Duration</th></tr>";
 		
@@ -51,7 +51,7 @@ class XML_Import {
 	public function writeToDatabase($mysqli) {
 		foreach($this->flight_list as $flight) {
 			if ($this->checkFlight($mysqli, $flight)) {
-				echo "check successful<br>";
+				echo "flight added<br>";
 				
 				
 				$duration = $flight->landingtime - $flight->takeofftime;
@@ -61,34 +61,43 @@ class XML_Import {
 				
 				//insert data
 				
-				$prep = $mysqli->prepare("INSERT INTO flights SET recordtime=?, pilotid=?, aircraftid=?, takeofftime=?, landingtime=?");
+				$prep = $mysqli->prepare("INSERT INTO bms_flights SET recordtime=?, pilotid=?, aircraftid=?, takeofftime=?, landingtime=?");
 				$prep->bind_param('iiiii', $flight->recordtime, $pilotid, $aircraftid, $flight->takeofftime, $flight->landingtime);
 				$prep->execute();
 				$prep->close();
 				
-				$prep = $mysqli->prepare("UPDATE pilots SET flights=flights+1, flighttime=flighttime+?, lastactive=? WHERE id=?");
+				$prep = $mysqli->prepare("UPDATE bms_pilots SET flights=flights+1, flighttime=flighttime+?, lastactive=? WHERE id=?");
 				$prep->bind_param('iii', $duration, $flight->recordtime, $pilotid);
 				$prep->execute();
 				$prep->close();
 				
-				$prep = $mysqli->prepare("UPDATE aircrafts SET flights=flights+1, flighttime=flighttime+? WHERE id=?");
+				$prep = $mysqli->prepare("UPDATE bms_aircrafts SET flights=flights+1, flighttime=flighttime+? WHERE id=?");
 				$prep->bind_param('ii', $duration, $aircraftid);
 				$prep->execute();
 				$prep->close();
 				
-				$prep = $mysqli->prepare("UPDATE pilot_aircrafts SET flights=flights+1, flighttime=flighttime+? WHERE id=?");
+				$prep = $mysqli->prepare("UPDATE bms_pilot_aircrafts SET flights=flights+1, flighttime=flighttime+? WHERE id=?");
 				$prep->bind_param('ii', $duration, $pilotaircraftid);
 				$prep->execute();
 				$prep->close();
 				
 			} else {
-				echo "check failed!<br>";
+				echo "duplicate flight not added<br>";
 			}
 		}
+		
+		
+		//end parsing
+		$this->bms_parser_log->endtimems = microtime(true) * 1000;
+		$this->bms_parser_log->durationms = round($this->bms_parser_log->endtimems - $this->bms_parser_log->starttimems);
+		
+		//write log entry
+		$query = "INSERT INTO bms_parser_log SET time='" . $this->bms_parser_log->time . "', durationms='" . $this->bms_parser_log->durationms . "', events='" . $this->bms_parser_log->events . "'";
+		$mysqli->query($query);
 	}
 	
 	private function getPilotId($mysqli, $pilot) {
-		$prep = $mysqli->prepare("SELECT id FROM pilots WHERE name=? LIMIT 1");
+		$prep = $mysqli->prepare("SELECT id FROM bms_pilots WHERE name=? LIMIT 1");
 		$prep->bind_param('s', $pilot);
 		$prep->execute();
 		$prep->store_result();
@@ -97,7 +106,7 @@ class XML_Import {
 		if ($prep->num_rows == 0) {
 			$prep->close();
 			
-			$prep = $mysqli->prepare("INSERT INTO pilots SET name=?, disp_name=name");
+			$prep = $mysqli->prepare("INSERT INTO bms_pilots SET name=?, disp_name=name");
 			$prep->bind_param('s', $pilot);
 			$prep->execute();
 			$prep->close();
@@ -115,7 +124,7 @@ class XML_Import {
 	
 	
 	private function getAircraftId($mysqli, $aircraft) {
-		$prep = $mysqli->prepare("SELECT id FROM aircrafts WHERE name=? LIMIT 1");
+		$prep = $mysqli->prepare("SELECT id FROM bms_aircrafts WHERE name=? LIMIT 1");
 		$prep->bind_param('s', $aircraft);
 		$prep->execute();
 		$prep->store_result();
@@ -124,7 +133,7 @@ class XML_Import {
 		if ($prep->num_rows == 0) {
 			$prep->close();
 			
-			$prep = $mysqli->prepare("INSERT INTO aircrafts SET name=?");
+			$prep = $mysqli->prepare("INSERT INTO bms_aircrafts SET name=?");
 			$prep->bind_param('s', $aircraft);
 			$prep->execute();
 			$prep->close();
@@ -141,7 +150,7 @@ class XML_Import {
 	}
 	
 	private function getPilotAircraftId($mysqli, $pilotid, $aircraftid) {
-		$prep = $mysqli->prepare("SELECT id FROM pilot_aircrafts WHERE pilotid=? AND aircraftid=? LIMIT 1");
+		$prep = $mysqli->prepare("SELECT id FROM bms_pilot_aircrafts WHERE pilotid=? AND aircraftid=? LIMIT 1");
 		$prep->bind_param('ii', $pilotid, $aircraftid);
 		$prep->execute();
 		$prep->store_result();
@@ -150,7 +159,7 @@ class XML_Import {
 		if ($prep->num_rows == 0) {
 			$prep->close();
 			
-			$prep = $mysqli->prepare("INSERT INTO pilot_aircrafts SET pilotid=?, aircraftid=?");
+			$prep = $mysqli->prepare("INSERT INTO bms_pilot_aircrafts SET pilotid=?, aircraftid=?");
 			$prep->bind_param('ii', $pilotid, $aircraftid);
 			$prep->execute();
 			$prep->close();
@@ -188,7 +197,7 @@ class XML_Import {
 		}
 		
 		
-		$prep = $mysqli->prepare("SELECT flights.id FROM flights, pilots, aircrafts WHERE flights.pilotid=pilots.id AND flights.aircraftid=aircrafts.id AND pilots.name=? AND aircrafts.name=? AND (flights.takeofftime<=? AND flights.landingtime>=? OR flights.takeofftime<=? AND flights.landingtime>=?) AND (ABS(flights.recordtime-?) < 3600)");
+		$prep = $mysqli->prepare("SELECT flights.id FROM bms_flights AS flights, bms_pilots AS pilots, bms_aircrafts AS aircrafts WHERE flights.pilotid=pilots.id AND flights.aircraftid=aircrafts.id AND pilots.name=? AND aircrafts.name=? AND (flights.takeofftime<=? AND flights.landingtime>=? OR flights.takeofftime<=? AND flights.landingtime>=?) AND (ABS(flights.recordtime-?) < 3600)");
 		$prep->bind_param('ssiiiii', $flight->pilot, $flight->aircraft, $flight->takeofftime, $flight->takeofftime, $flight->landingtime, $flight->landingtime, $flight->recordtime);
 		
 		$prep->execute();
@@ -203,7 +212,14 @@ class XML_Import {
 		return false;
 	}
 
-	function XML_Import($filename) {		
+	function XML_Import($filename) {
+		
+		//start logging
+		$this->bms_parser_log = new stdClass();
+		$this->bms_parser_log->time = time();
+		$this->bms_parser_log->starttimems = microtime(true) * 1000;
+		$this->bms_parser_log->events = 0;
+				
 
 		$xml = simplexml_load_file($filename);
 		$recordsource = $xml->FlightRecording->Source;
@@ -219,7 +235,7 @@ class XML_Import {
 			$missiontime = $event->Time;
 			$id = intval($event->PrimaryObject['ID']);
 			$type = $this->getUnitType($event->PrimaryObject->Type);
-			
+			$this->bms_parser_log->events++;
 			
 			//TAKEOFF
 			if ($event->Action == "HasTakeOff" && $type == "AIRPLANE") {
