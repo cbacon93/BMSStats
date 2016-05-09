@@ -14,7 +14,7 @@
 	// See the License for the specific language governing permissions and
 	// limitations under the License.
 	//
-	// Github Project: https://github.com/cbacon93/DCSServerStats
+	// Github Project: https://github.com/cbacon93/BMSStats
 
 	
 class SimStats {
@@ -298,5 +298,184 @@ class SimStats {
 			echo "Pilot not found!";
 		}
 	}
-} 	
+} 
+
+class SimStatsAdmin extends SimStats {
+	
+	public function echoAdminPilotsTable() {
+		echo "<table class='table_stats'>";
+		echo "<tr class='table_header'><th>ID</th><th>Raw Pilot Name</th><th>Pilot Name</th><th>Actions</th><th>Transfer to Pilot ID</th></tr>";
+		
+		$pilots = $this->getPilotsTable();
+		
+		foreach($pilots as $aid=>$pilot) {
+			
+			echo "<tr class='table_row_" . $aid%2 . "'><td>" . $pilot->id . "</td><td>" . $pilot->name . "</td><td><form method='POST'><input type='text' value='" . $pilot->disp_name . "' name='newname'><input type='submit' value='rename' name='rename'><input type='hidden' name='pilotid' value='" . $pilot->id . "'></form></td><td><a href='?makeai=" . $pilot->id . "'>declare as AI</a> - <a href='?delete=" . $pilot->id . "'>remove</a></td><td><form method='POST'><input type='text' name='topilotid' value='0' style='width: 20px;'><input type='hidden' name='frompilotid' value='" . $pilot->id . "'><input type='submit' name='transferpilot' value='transfer'></form></td></tr>";
+			
+			
+		}
+		
+		if (sizeof($pilots) == 0) {
+			echo "<tr><td style='text-align: center' colspan='8'>No Pilots listed</td></tr>";
+		}
+		
+		echo "</table>";
+	}
+	
+	
+	public function removeFlight($flightid) {
+		$prep = $this->mysqli->prepare("SELECT id, pilotid, aircraftid, takeofftime, landingtime FROM bms_flights WHERE id=?");
+		$prep->bind_param('i', $flightid);
+		$prep->execute();
+		
+		$prep->bind_result($row_id, $row_pilotid, $row_acid, $row_takeofftime, $row_landingtime);
+		if ($prep->fetch()) {
+			$prep->close();
+			$row_duration = $row_landingtime - $row_takeofftime;
+			
+			$this->mysqli->query("UPDATE bms_pilots SET flighttime=flighttime-" . $row_duration . ", flights=flights-1 WHERE id=" . $row_pilotid);
+			$this->mysqli->query("UPDATE bms_aircrafts SET flighttime=flighttime-" . $row_duration . ", flights=flights-1 WHERE id=" . $row_acid);
+			$this->mysqli->query("UPDATE bms_pilot_aircrafts SET flighttime=flighttime-" . $row_duration . ", flights=flights-1 WHERE pilotid=" . $row_pilotid . " AND aircraftid=" . $row_acid);
+			
+			$this->mysqli->query("DELETE FROM bms_flights WHERE id=" . $row_id . " LIMIT 1");
+			
+			return true;
+		}
+		$prep->close();
+		return false;
+	}
+	
+	public function mergePilot($pilotid_from, $pilotid_to) {
+		$prep = $this->mysqli->prepare("SELECT disp_name, SUM(flighttime), SUM(flights) FROM bms_pilots WHERE id IN (?, ?)");
+		$prep->bind_param('ii', $pilotid_from, $pilotid_to);
+		$prep->execute();
+		$prep->bind_result($row_disp_name, $row_flighttime, $row_flights);
+		
+		if ($prep->fetch()) {
+			$prep->close();
+			
+			//take new pilots data
+			$prep2 = $this->mysqli->prepare("UPDATE bms_pilots SET disp_name=?, flighttime=?, flights=? WHERE id=?");
+			$prep2->bind_param('siii', $row_disp_name, $row_flighttime, $row_flights, $pilotid_to);
+			$prep2->execute();
+			$prep2->close();
+			
+			//delete old pilot
+			$prep3 = $this->mysqli->prepare("DELETE FROM bms_pilots WHERE id=? LIMIT 1");
+			$prep3->bind_param('i', $pilotid_from);
+			$prep3->execute();
+			$prep3->close();
+			
+			//transfer flights
+			$prep4 = $this->mysqli->prepare("UPDATE bms_flights SET pilotid=? WHERE pilotid=?");
+			$prep4->bind_param('ii', $pilotid_to, $pilotid_from);
+			$prep4->execute();
+			$prep4->close();
+			
+			
+			//transfer pilot aircrafts
+			//get aircrafts
+			$pilot_aircrafts = array();
+			$prep8 = $this->mysqli->prepare("SELECT id, aircraftid, flights, flighttime FROM bms_pilot_aircrafts WHERE pilotid=?");
+			$prep8->bind_param('i', $pilotid_from);
+			$prep8->execute();
+			$prep8->bind_result($row_id, $row_acid, $row_flights, $row_time);
+			while($prep8->fetch()) {
+				$pa = new stdClass();
+				$pa->id = $row_id;
+				$pa->acid = $row_acid;
+				$pa->flights = $row_flights;
+				$pa->time = $row_time;
+				$pilot_aircrafts[] = $pa;
+			}
+			$prep8->close();
+			
+			
+			//take aircraft data to new pilot
+			foreach($pilot_aircrafts as $aircraft) {
+				$prep9 = $this->mysqli->prepare("UPDATE bms_pilot_aircrafts SET flighttime=flighttime+?, flights=flights+? WHERE aircraftid=? AND pilotid=? LIMIT 1");
+				$prep9->bind_param('iiii', $aircraft->time, $pa->flights, $aircraft->acid, $pilotid_to);
+				$prep9->execute();
+				
+				//no pilot_aircraft entry, take old one
+				if ($prep9->affected_rows < 1) {
+					$prep9->close();
+					$prep10 = $this->mysqli->prepare("UPDATE bms_pilot_aircrafts SET pilotid=? WHERE id=?");
+					$prep10->bind_param('ii', $pilotid_to, $aircraft->id);
+				}
+				$prep9->close();
+			}
+			
+			
+			
+			//remove old pilot
+			$this->removePilot($pilotid_from);
+			
+			return true;
+		}
+		$prep->close();
+		return false;
+	}
+	
+	public function removePilot($pilotid) {
+		$prep1 = $this->mysqli->prepare("DELETE FROM bms_pilots WHERE id=? LIMIT 1");
+		$prep1->bind_param('i', $pilotid);
+		$prep1->execute();
+		$prep1->close();
+
+		$prep2 = $this->mysqli->prepare("DELETE FROM bms_flights WHERE pilotid=?");
+		$prep2->bind_param('i', $pilotid);
+		$prep2->execute();
+		$prep2->close();
+				
+		$prep4 = $this->mysqli->prepare("DELETE FROM bms_pilot_aircrafts WHERE pilotid=?");
+		$prep4->bind_param('i', $pilotid);
+		$prep4->execute();
+		$prep4->close();
+	}
+	
+	
+	public function renamePilot($pilotid, $name) {
+		$prep = $this->mysqli->prepare("UPDATE bms_pilots SET disp_name=? WHERE id=? LIMIT 1");
+		$prep->bind_param('si', $name, $pilotid);
+		$prep->execute();
+		$prep->close();
+	}
+	
+	
+	public function autoMergePilots() {
+		$result = $this->mysqli->query("SELECT id, name FROM bms_pilots");
+		$pilots = array();
+		while($row = $result->fetch_object()) {
+			//get raw name
+			$name = strtolower($row->name);
+			$name = str_replace("vjs", "", $name);
+			$name = str_replace("vjg", "", $name);
+			$name = str_replace("vj", "", $name);
+			$name = str_replace("161", "", $name);
+			$name = str_replace("162", "", $name);
+			$name = str_replace("16", "", $name);
+			$name = str_replace("-", "", $name);
+			$name = str_replace("_", "", $name);
+			$name = str_replace(" ", "", $name);
+			$name = str_replace("|", "", $name);
+			
+			//save data
+			$pilot = new stdClass();
+			$pilot->id = $row->id;
+			$pilot->name = $name;
+			$pilots[] = $pilot;
+		}
+		
+		//search for duplicates
+		for ($i = 0; $i < sizeof($pilots)-1; $i++) {
+			for ($j = $i+1; $j < sizeof($pilots); $j++) {
+				//discovered duplicate pilot
+				if ($pilots[$i]->name == $pilots[$j]->name && $pilots[$i]->id != $pilots[$j]->id) {
+					$this->mergePilot($pilots[$i]->id, $pilots[$j]->id);
+				}
+			}
+		}
+	}
+}
 ?>

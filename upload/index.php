@@ -15,7 +15,7 @@
 	// See the License for the specific language governing permissions and
 	// limitations under the License.
 	//
-	// Github Project: https://github.com/cbacon93/DCSServerStats
+	// Github Project: https://github.com/cbacon93/BMSStats
 	session_start();
 
 
