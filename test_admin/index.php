@@ -50,10 +50,10 @@
 				$totstr = $_POST["th"] . ":" . $_POST["tm"] . "-" . $_POST["td"] . "." . $_POST["tmo"] . "." . $_POST["ty"];
 				$ldgtstr = $_POST["lh"] . ":" . $_POST["lm"] . "-" . $_POST["ld"] . "." . $_POST["lmo"] . "." . $_POST["ly"];
 				
-				$takeofftime = DateTime::createFromFormat("H:i-d.m.Y", $totstr, new DateTimeZone("UTC"));
-				$landingtime = DateTime::createFromFormat("H:i-d.m.Y", $ldgtstr, new DateTimeZone("UTC"));
+				$takeofftime = DateTime::createFromFormat("H:i-d.m.Y", $totstr, new DateTimeZone("EUROPE"));
+				$landingtime = DateTime::createFromFormat("H:i-d.m.Y", $ldgtstr, new DateTimeZone("EUROPE"));
 				
-				$message = $simStatsAdmin->addFlight(intval($_POST["pilot"]), intval(["aircraft"]), $takeofftime->getTimestamp(), $landingtime->getTimestamp());
+				$message = $simStatsAdmin->addFlight(intval($_POST["pilot"]), intval($_POST["aircraft"]), $takeofftime->getTimestamp(), $landingtime->getTimestamp());
 			}
 		} else {
 			if (isset($_POST["rename"])) {
