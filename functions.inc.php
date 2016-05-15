@@ -323,6 +323,92 @@ class SimStatsAdmin extends SimStats {
 	}
 	
 	
+	public function echoAdminFlightsTable() {
+		$flights = $this->getPilotsFlightsTable();
+		
+		echo "<table class='table_stats'>";
+		echo "<tr class='table_header'><th>ID</th><th>Pilot</th><th>Aircraft</th><th>Takeoff</th><th>Landing</th><th>Duration</th><th>Action</th></tr>";
+		
+		foreach($flights as $aid=>$flight) {
+			echo "<tr class='table_row_" . $aid%2 . "'><td>" . $flight->id . "</td><td>" . $flight->pilotname . "</td><td>" . $flight->acname . "</td><td>" . date('d.m.Y - H:i', $flight->takeofftime) . "</td><td>" . date('d.m.Y - H:i', $flight->landingtime) . "</td><td>" . $this->timeToString($flight->duration) . "</td><td><a href=\"?flights&delete=" . $flight->id . "\">Delete</a></td></tr>";
+		}
+		
+		if (sizeof($flights) == 0) {
+			echo "<tr><td style='text-align: center' colspan='9'>No Flights listed</td></tr>";
+		}
+		
+		echo "</table><br><br>";
+	}
+	
+	
+	public function echoAddFlight() {
+		echo "<form action=\"?flights\" method=\"post\">";
+		echo "<table class='table_stats'>";
+		echo "<tr class='table_header'><th>Pilot</th><th>Aircraft</th><th>Takeoff</th><th>Landing</th><th>Action</th></tr>";
+		
+		//echo pilots
+		echo "<tr><td>";
+		$pilots = $this->getPilotsTable();
+		echo "<select name='pilot'>";
+		foreach($pilots as $pilot) {
+			echo "<option value='" . $pilot->id . "'>" . $pilot->disp_name . "</option>";
+		}
+		echo "</select>";
+		
+		//echo aircrafts
+		echo "</td><td>";
+		$aircrafts = $this->getPilotsAircraftTable();
+		echo "<select name='aircraft'>";
+		foreach($aircrafts as $aircraft) {
+			echo "<option value='" . $aircraft->id . "'>" . $aircraft->acname . "</option>";
+		}
+		echo "</select>";
+		
+		//takeoff time
+		echo "</td><td>";
+		echo "<input type='text' name='th' style='width:20px;' placeholder='HH'>:<input type='text' name='tm' style='width:20px;' placeholder='MM'><br>";
+		echo "<input type='text' name='td' style='width:20px;' placeholder='DD'>.<input type='text' name='tmo' style='width:20px;' placeholder='MM'>.<input type='text' name='ty' style='width:40px;' placeholder='YYYY'>";
+		
+		//landing time
+		echo "</td><td>";
+		echo "<input type='text' name='lh' style='width:20px;' placeholder='HH'>:<input type='text' name='lm' style='width:20px;' placeholder='MM'><br>";
+		echo "<input type='text' name='ld' style='width:20px;' placeholder='DD'>.<input type='text' name='lmo' style='width:20px;' placeholder='MM'>.<input type='text' name='ly' style='width:40px;' placeholder='YYYY'>";
+		
+		echo "</td><td><input type='submit' name='addflight' value='Add'></td></tr>";
+		echo "</table>";
+		echo "</form><br><br>";
+	}
+	
+	
+	public function addFlight($pilotid, $aircraftid, $takeofftime, $landingtime) {
+		$duration = $landingtime - $takeofftime;
+		$recordtime = time();
+		if ($duration <= 0) {
+			return "Time error";
+		}
+		
+		$prep = $this->mysqli->prepare("UPDATE bms_pilots SET flights=flights+1, flighttime=flighttime+? WHERE id=?");
+		$prep->bind_param('ii', $duration, $pilotid);
+		$prep->execute();
+		$prep->close();
+		
+		$prep = $this->mysqli->prepare("UPDATE bms_pilot_aircrafts SET flights=flights+1, flighttime=flighttime+? WHERE pilotid=? AND aircraftid=?");
+		$prep->bind_param('iii', $duration, $pilotid, $aircraftid);
+		$prep->execute();
+		$prep->close();
+		
+		$prep = $this->mysqli->prepare("UPDATE bms_aircrafts SET flights=flights+1, flighttime=flighttime+? WHERE id=?");
+		$prep->bind_param('ii', $duration, $aircraftid);
+		$prep->execute();
+		$prep->close();
+		
+		$prep = $this->mysqli->prepare("INSERT INTO bms_flights SET pilotid=?, aircraftid=?, takeofftime=?, landingtime=?, recordtime=?");
+		$prep->bind_param('iiiii', $pilotid, $aircraftid, $takeofftime, $landingtime, $recordtime);
+		$prep->execute();
+		$prep->close();
+	}
+	
+	
 	public function removeFlight($flightid) {
 		$prep = $this->mysqli->prepare("SELECT id, pilotid, aircraftid, takeofftime, landingtime FROM bms_flights WHERE id=?");
 		$prep->bind_param('i', $flightid);
